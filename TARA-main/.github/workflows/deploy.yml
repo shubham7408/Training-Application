@@ -1,0 +1,33 @@
+name: Auto-Deploy on PR Merge / Main branch updated
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v2
+
+    - name: Set up SSH
+      uses: webfactory/ssh-agent@v0.5.3
+      with:
+        ssh-private-key: ${{ secrets.FOR_PIPELINE }}
+
+    - name: Add SSH known host
+      run: |
+        ssh-keyscan -H 13.202.236.112 >> ~/.ssh/known_hosts
+
+    - name: Deploy to AWS
+      run: |
+        ssh -o StrictHostKeyChecking=no ubuntu@13.202.236.112 << 'EOF'
+        cd ~/projects/prod/toloka
+        cd frontend/ ; npm i --force ; npm run build        
+        pm2 restart tara-f ; sudo systemctl reload nginx
+        cd ..
+        cd backend ; npm i --force ; pm2 restart tara-b
+        EOF
